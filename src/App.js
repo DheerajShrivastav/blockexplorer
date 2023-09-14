@@ -1,6 +1,6 @@
 import { Alchemy, Network } from 'alchemy-sdk'
 import { useEffect, useState } from 'react'
-
+import TransactionDetails from './components/TransactionDetails'
 import './App.css'
 
 const settings = {
@@ -10,58 +10,19 @@ const settings = {
 
 const alchemy = new Alchemy(settings)
 
-function TransactionDetails({ txHash, onClose }) {
-  const [transactionInfo, setTransactionInfo] = useState(null)
-
-  useEffect(() => {
-    async function fetchTransactionInfo() {
-      const info = await alchemy.core.getTransactionReceipt(txHash)
-      setTransactionInfo(info)
-    }
-
-    fetchTransactionInfo()
-  }, [txHash])
-
-  return (
-    <div className="transaction-details">
-      <h2>Transaction Details</h2>
-      {transactionInfo ? (
-        <>
-          <div> Transaction Hash: {transactionInfo.transactionHash}</div>
-          <div> To: {transactionInfo.to}</div>
-          <div> From: {transactionInfo.from}</div>
-          <div> Block Number: {transactionInfo.blockNumber}</div>
-          <div> Contract Address: {transactionInfo.contractAddress ? transactionInfo.contractAddress  : "null"}</div>
-          <div> Gas Used: {transactionInfo.gasUsed._hex}</div>
-          <div> Effective Gas Price: {transactionInfo.effectiveGasPrice._hex}</div>
-          <div> Transaction Index: {transactionInfo.transactionIndex}</div>
-          <div> Type: {transactionInfo.type}</div>
-          {/* Add more transaction details as needed */}
-          {console.log(transactionInfo)}
-        </>
-      ) : (
-        <p>Loading...</p>
-      )}
-      <button onClick={onClose}>Close</button>
-    </div>
-  )
-}
-
 function App() {
   const [blockNumber, setBlockNumber] = useState()
   const [response, setResponse] = useState({})
   const [transactions, setTransactions] = useState([])
   const [selectedTxHash, setSelectedTxHash] = useState(null)
+  const [isChecked, setIsChecked] = useState(true)
 
-  useEffect(() => {
-    async function getBlockNumber() {
-      setBlockNumber(await alchemy.core.getBlockNumber())
-    }
+  async function getBlockNumber() {
+    isChecked
+      ? setBlockNumber(await alchemy.core.getBlockNumber())
+      : setBlockNumber(document.getElementById('blockInput').value)
+  }
 
-    getBlockNumber()
-  }, [])
-
-  useEffect(() => {
     async function fetchData() {
       const block = await alchemy.core.getBlock(blockNumber)
       setResponse(block)
@@ -72,10 +33,13 @@ function App() {
       setTransactions(tx.transactions || [])
     }
 
+    
+
+  async function onSubmit() {
+    getBlockNumber()
     fetchData()
     fetchTransactions()
-  }, [blockNumber])
-
+  }
   const openTransactionInfo = (txHash) => {
     setSelectedTxHash(txHash)
   }
@@ -84,8 +48,20 @@ function App() {
     setSelectedTxHash(null)
   }
 
+  const handleCheckboxChange = () => {
+    setIsChecked(!isChecked)
+  }
   return (
     <div>
+      <h1>Enter the Block Number Or Block Hash</h1>
+      <input type="text" id="blockInput" />
+      <input
+        type="checkbox"
+        checked={isChecked}
+        onChange={handleCheckboxChange}
+      />
+      Fetch current block
+      <button onClick={onSubmit}>Submit</button>
       <div className="App">Block Number: {blockNumber}</div>
       <div>Hash: {response.hash}</div>
       <div>ParentHash: {response.parentHash}</div>
@@ -94,7 +70,6 @@ function App() {
       <div>Nonce: {response.nonce}</div>
       <div>Difficulty: {response.difficulty}</div>
       <div>Miner: {response.miner}</div>
-
       <h2>Transactions:</h2>
       <ul>
         {transactions.map((transaction, index) => (
@@ -112,7 +87,6 @@ function App() {
         ))}
         <br />
       </ul>
-
       {selectedTxHash && (
         <TransactionDetails
           txHash={selectedTxHash}
